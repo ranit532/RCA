@@ -297,10 +297,11 @@ class ReconciliationEngine:
             # Insert results
             for result in self.results:
                 result_dict = result.to_dict()
-                insert_sql = f"""
-                INSERT INTO {schema}.RECONCILIATION_RESULTS 
-                (RUN_ID, CONTROL_ID, CONTROL_NAME, RECONCILIATION_TYPE, SOURCE_COUNT, TARGET_COUNT, 
-                 VARIANCE, VARIANCE_PERCENTAGE, PASSED, TOLERANCE_DETAILS, ERROR_MESSAGE, 
+                table_name = schema + ".RECONCILIATION_RESULTS"
+                insert_sql = """
+                INSERT INTO """ + table_name + """
+                (RUN_ID, CONTROL_ID, CONTROL_NAME, RECONCILIATION_TYPE, SOURCE_COUNT, TARGET_COUNT,
+                 VARIANCE, VARIANCE_PERCENTAGE, PASSED, TOLERANCE_DETAILS, ERROR_MESSAGE,
                  EXECUTION_TIME_SEC, EXECUTED_AT)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """

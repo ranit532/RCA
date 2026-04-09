@@ -131,16 +131,17 @@ class DataQualityEngine:
             
             # Insert results
             for result in self.results:
-                insert_sql = f"""
-                INSERT INTO {schema}.DQ_EXECUTION_RESULTS 
-                (RUN_ID, RULE_ID, RULE_NAME, TABLE_NAME, RULE_TYPE, RECORDS_TESTED, 
+                table_name = schema + ".DQ_EXECUTION_RESULTS"
+                insert_sql = """
+                INSERT INTO """ + table_name + """
+                (RUN_ID, RULE_ID, RULE_NAME, TABLE_NAME, RULE_TYPE, RECORDS_TESTED,
                  RECORDS_FAILED, FAILURE_RATE, PASSED, ERROR_MESSAGE, EXECUTION_TIME_SEC, EXECUTED_AT)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 cursor.execute(insert_sql, (
                     result.run_id, result.rule_id, result.rule_name, result.table_name,
-                    result.rule_type, result.records_tested, result.records_failed,
-                    result.failure_rate, result.passed, result.error_message,
+                    result.rule_type.value, result.records_tested, result.records_failed,
+                    result.failure_rate, result.passed, result.error_message or "",
                     result.execution_time_sec, datetime.utcnow()
                 ))
             

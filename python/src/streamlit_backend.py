@@ -12,8 +12,8 @@ DEFAULT_CONTROLS_SCHEMA = DEFAULT_CONFIG.schema_controls
 
 # Snowflake session helpers
 
-def initialize_snowflake_session() -> Optional[Session]:
-    """Initialize and return a Snowpark session."""
+def initialize_snowflake_session() -> Optional[Any]:
+    """Initialize and return a Snowflake connection."""
     try:
         return SnowparkSessionManager.initialize(DEFAULT_CONFIG)
     except Exception as exc:
@@ -26,19 +26,26 @@ def close_snowflake_session() -> None:
     SnowparkSessionManager.close()
 
 
-def _execute_sql(session: Session, sql: str) -> pd.DataFrame:
+def _execute_sql(session: Any, sql: str) -> pd.DataFrame:
     """Execute SQL and return a pandas DataFrame."""
     if session is None:
         return pd.DataFrame()
     try:
-        df = session.sql(sql).to_pandas()
+        cursor = session.cursor()
+        cursor.execute(sql)
+        # Get column names
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        # Fetch all rows
+        rows = cursor.fetchall()
+        cursor.close()
+        df = pd.DataFrame(rows, columns=columns)
         return df
     except Exception as exc:
         logger.error(f"SQL execution failed: {exc} -- SQL: {sql}")
         return pd.DataFrame()
 
 
-def _table_exists(session: Session, schema: str, table: str) -> bool:
+def _table_exists(session: Any, schema: str, table: str) -> bool:
     """Check whether a table exists in the current database."""
     if session is None:
         return False
@@ -47,10 +54,10 @@ def _table_exists(session: Session, schema: str, table: str) -> bool:
         f"WHERE TABLE_SCHEMA = '{schema.upper()}' AND TABLE_NAME = '{table.upper()}'"
     )
     df = _execute_sql(session, sql)
-    return not df.empty and int(df.iloc[0][0]) > 0
+    return not df.empty and int(df.iloc[0]['CNT']) > 0
 
 
-def get_overview_metrics(session: Session) -> Dict[str, int]:
+def get_overview_metrics(session: Any) -> Dict[str, int]:
     """Get overview counts for the dashboard."""
     metrics = {
         "dq_total": 0,
@@ -76,9 +83,9 @@ def get_overview_metrics(session: Session) -> Dict[str, int]:
         )
         df = _execute_sql(session, dq_sql)
         if not df.empty:
-            metrics["dq_total"] = int(df.iloc[0][0] or 0)
-            metrics["dq_passed"] = int(df.iloc[0][1] or 0)
-            metrics["dq_rule_count"] = int(df.iloc[0][2] or 0)
+            metrics["dq_total"] = int(df.iloc[0]['CNT'] or 0)
+            metrics["dq_passed"] = int(df.iloc[0]['PASSED'] or 0)
+            metrics["dq_rule_count"] = int(df.iloc[0]['RULE_COUNT'] or 0)
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "RECONCILIATION_RESULTS"):
         recon_sql = (
@@ -88,30 +95,30 @@ def get_overview_metrics(session: Session) -> Dict[str, int]:
         )
         df = _execute_sql(session, recon_sql)
         if not df.empty:
-            metrics["recon_total"] = int(df.iloc[0][0] or 0)
-            metrics["recon_passed"] = int(df.iloc[0][1] or 0)
-            metrics["recon_control_count"] = int(df.iloc[0][2] or 0)
+            metrics["recon_total"] = int(df.iloc[0]['CNT'] or 0)
+            metrics["recon_passed"] = int(df.iloc[0]['PASSED'] or 0)
+            metrics["recon_control_count"] = int(df.iloc[0]['CONTROL_COUNT'] or 0)
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DYD_MAPPINGS"):
         df = _execute_sql(session, f"SELECT COUNT(*) AS CNT FROM {DEFAULT_CONTROLS_SCHEMA}.DYD_MAPPINGS")
-        metrics["dyd_mappings"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+        metrics["dyd_mappings"] = int(df.iloc[0]['CNT'] or 0) if not df.empty else 0
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DYD_METADATA"):
         df = _execute_sql(session, f"SELECT COUNT(*) AS CNT FROM {DEFAULT_CONTROLS_SCHEMA}.DYD_METADATA")
-        metrics["dyd_metadata"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+        metrics["dyd_metadata"] = int(df.iloc[0]['CNT'] or 0) if not df.empty else 0
 
     sql = (
         f"SELECT COUNT(*) AS CNT FROM {DEFAULT_DB}.INFORMATION_SCHEMA.TABLES "
         f"WHERE TABLE_SCHEMA IN ('{DEFAULT_CONFIG.schema_curated.upper()}', '{DEFAULT_CONFIG.schema_analytics.upper()}')"
     )
     df = _execute_sql(session, sql)
-    metrics["dynamic_tables"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+    metrics["dynamic_tables"] = int(df.iloc[0]['CNT'] or 0) if not df.empty else 0
 
     metrics["live"] = True
     return metrics
 
 
-def get_dq_results(session: Session, limit: int = 50) -> pd.DataFrame:
+def get_dq_results(session: Any, limit: int = 50) -> pd.DataFrame:
     """Fetch the latest data quality results."""
     if session is None or not _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DQ_EXECUTION_RESULTS"):
         return pd.DataFrame()
@@ -124,7 +131,7 @@ def get_dq_results(session: Session, limit: int = 50) -> pd.DataFrame:
     return _execute_sql(session, sql)
 
 
-def get_recon_results(session: Session, limit: int = 50) -> pd.DataFrame:
+def get_recon_results(session: Any, limit: int = 50) -> pd.DataFrame:
     """Fetch the latest reconciliation results."""
     if session is None or not _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "RECONCILIATION_RESULTS"):
         return pd.DataFrame()
@@ -138,7 +145,7 @@ def get_recon_results(session: Session, limit: int = 50) -> pd.DataFrame:
     return _execute_sql(session, sql)
 
 
-def get_audit_trail(session: Session, limit: int = 20) -> pd.DataFrame:
+def get_audit_trail(session: Any, limit: int = 20) -> pd.DataFrame:
     """Fetch an audit trail summary for DQ and reconciliation executions."""
     if session is None:
         return pd.DataFrame()

@@ -99,9 +99,12 @@ class DYDIntegration:
     
     def create_mapping_reference_table(self, schema: str = "CONTROLS") -> bool:
         """Create and populate mapping reference table in Snowflake"""
+        cursor = None
         try:
-            self.session.sql(f"CREATE SCHEMA IF NOT EXISTS {schema}").collect()
-            
+            cursor = self.session.cursor()
+
+            cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
             create_table_sql = f"""
             CREATE TABLE IF NOT EXISTS {schema}.DYD_MAPPINGS (
                 MAPPING_ID NUMBER AUTOINCREMENT,
@@ -117,38 +120,47 @@ class DYDIntegration:
                 PRIMARY KEY (MAPPING_ID)
             )
             """
-            self.session.sql(create_table_sql).collect()
-            
+            cursor.execute(create_table_sql)
+
             # Insert mappings
             if self.mappings:
-                mappings_data = []
                 for mapping in self.mappings.values():
-                    mappings_data.append({
-                        "SOURCE_SYSTEM": mapping.source_system,
-                        "SOURCE_ENTITY": mapping.source_entity,
-                        "SOURCE_COLUMNS": ",".join(mapping.source_columns),
-                        "TARGET_TABLE": mapping.target_table,
-                        "TARGET_COLUMNS": ",".join(mapping.target_columns),
-                        "MAPPING_CONFIDENCE": mapping.mapping_confidence,
-                        "TRANSFORMATION_LOGIC": mapping.transformation_logic,
-                        "JOIN_KEYS": ",".join(mapping.join_keys) if mapping.join_keys else None,
-                    })
-                
-                df = self.session.create_dataframe(mappings_data)
-                df.write.mode("overwrite").save_as_table(f"{schema}.DYD_MAPPINGS")
-                logger.info(f"Created mapping reference table with {len(mappings_data)} records")
-            
+                    insert_sql = f"""
+                    INSERT INTO {schema}.DYD_MAPPINGS
+                    (SOURCE_SYSTEM, SOURCE_ENTITY, SOURCE_COLUMNS, TARGET_TABLE, TARGET_COLUMNS,
+                     MAPPING_CONFIDENCE, TRANSFORMATION_LOGIC, JOIN_KEYS)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(insert_sql, (
+                        mapping.source_system,
+                        mapping.source_entity,
+                        ",".join(mapping.source_columns),
+                        mapping.target_table,
+                        ",".join(mapping.target_columns),
+                        mapping.mapping_confidence,
+                        mapping.transformation_logic,
+                        ",".join(mapping.join_keys) if mapping.join_keys else None,
+                    ))
+
+                logger.info(f"Created mapping reference table with {len(self.mappings)} records")
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error creating mapping table: {str(e)}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
     
     def create_metadata_reference_table(self, schema: str = "CONTROLS") -> bool:
         """Create and populate metadata reference table in Snowflake"""
+        cursor = None
         try:
-            self.session.sql(f"CREATE SCHEMA IF NOT EXISTS {schema}").collect()
-            
+            cursor = self.session.cursor()
+
+            cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
             create_table_sql = f"""
             CREATE TABLE IF NOT EXISTS {schema}.DYD_METADATA (
                 METADATA_ID NUMBER AUTOINCREMENT,
@@ -163,31 +175,36 @@ class DYDIntegration:
                 PRIMARY KEY (METADATA_ID)
             )
             """
-            self.session.sql(create_table_sql).collect()
-            
+            cursor.execute(create_table_sql)
+
             # Insert metadata
             if self.metadata:
-                metadata_data = []
                 for meta in self.metadata.values():
-                    metadata_data.append({
-                        "ENTITY_NAME": meta.entity_name,
-                        "ENTITY_TYPE": meta.entity_type,
-                        "COLUMN_NAME": meta.column_name,
-                        "DATA_TYPE": meta.data_type,
-                        "DESCRIPTION": meta.description,
-                        "BUSINESS_TERM": meta.business_term,
-                        "SAMPLE_VALUES": ",".join(meta.sample_values) if meta.sample_values else None,
-                    })
-                
-                df = self.session.create_dataframe(metadata_data)
-                df.write.mode("overwrite").save_as_table(f"{schema}.DYD_METADATA")
-                logger.info(f"Created metadata table with {len(metadata_data)} records")
-            
+                    insert_sql = f"""
+                    INSERT INTO {schema}.DYD_METADATA
+                    (ENTITY_NAME, ENTITY_TYPE, COLUMN_NAME, DATA_TYPE, DESCRIPTION, BUSINESS_TERM, SAMPLE_VALUES)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(insert_sql, (
+                        meta.entity_name,
+                        meta.entity_type,
+                        meta.column_name,
+                        meta.data_type,
+                        meta.description,
+                        meta.business_term,
+                        ",".join(meta.sample_values) if meta.sample_values else None,
+                    ))
+
+                logger.info(f"Created metadata table with {len(self.metadata)} records")
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error creating metadata table: {str(e)}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
     
     def get_mapping_for_target(self, target_table: str) -> Optional[DYDMapping]:
         """Get mapping details for a target table"""

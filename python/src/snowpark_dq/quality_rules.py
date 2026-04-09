@@ -107,7 +107,7 @@ ASSET_DATA_QUALITY_RULES = [
         rule_type=RuleType.UNIQUENESS,
         table_name="DIM_INSTRUMENT_RAW",
         columns=["ISIN"],
-        sql_logic="COUNT(*) = 1 OVER (PARTITION BY ISIN)",
+        sql_logic="ISIN IN (SELECT ISIN FROM DIM_INSTRUMENT_RAW GROUP BY ISIN HAVING COUNT(*) = 1)",
         threshold=0.0,
         severity="HIGH",
     ),
