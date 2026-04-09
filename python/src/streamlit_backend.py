@@ -157,7 +157,7 @@ def get_audit_trail(session: Any, limit: int = 20) -> pd.DataFrame:
             f"AVG(EXECUTION_TIME_SEC) AS DURATION_SEC, COUNT(*) AS RULES_CONTROLS, "
             f"SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) AS PASSED, "
             f"SUM(CASE WHEN PASSED THEN 0 ELSE 1 END) AS FAILED, "
-            f"CASE WHEN SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) = COUNT(*) THEN '✅ SUCCESS' ELSE '⚠️ PARTIAL' END AS STATUS "
+            f"CASE WHEN SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) = COUNT(*) THEN 'SUCCESS' ELSE 'PARTIAL' END AS STATUS "
             f"FROM {DEFAULT_CONTROLS_SCHEMA}.DQ_EXECUTION_RESULTS "
             f"GROUP BY RUN_ID, EXECUTED_AT "
             f"ORDER BY EXECUTED_AT DESC LIMIT {limit}"
@@ -170,7 +170,7 @@ def get_audit_trail(session: Any, limit: int = 20) -> pd.DataFrame:
             f"SUM(EXECUTION_TIME_SEC) AS DURATION_SEC, COUNT(*) AS RULES_CONTROLS, "
             f"SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) AS PASSED, "
             f"SUM(CASE WHEN PASSED THEN 0 ELSE 1 END) AS FAILED, "
-            f"CASE WHEN SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) = COUNT(*) THEN '✅ SUCCESS' ELSE '⚠️ PARTIAL' END AS STATUS "
+            f"CASE WHEN SUM(CASE WHEN PASSED THEN 1 ELSE 0 END) = COUNT(*) THEN 'SUCCESS' ELSE 'PARTIAL' END AS STATUS "
             f"FROM {DEFAULT_CONTROLS_SCHEMA}.RECONCILIATION_RESULTS "
             f"GROUP BY RUN_ID, EXECUTED_AT "
             f"ORDER BY EXECUTED_AT DESC LIMIT {limit}"
@@ -180,13 +180,17 @@ def get_audit_trail(session: Any, limit: int = 20) -> pd.DataFrame:
     if not dfs:
         return pd.DataFrame()
 
-    result = pd.concat([df for df in dfs if not df.empty], ignore_index=True)
+    non_empty_dfs = [df for df in dfs if not df.empty]
+    if not non_empty_dfs:
+        return pd.DataFrame()
+
+    result = pd.concat(non_empty_dfs, ignore_index=True)
     if result.empty:
         return result
     return result.sort_values(by="EXECUTED_AT", ascending=False).head(limit)
 
 
-def get_dyd_status(session: Session) -> Dict[str, int]:
+def get_dyd_status(session: Any) -> Dict[str, int]:
     """Fetch DYD integration counts."""
     status = {
         "mappings": 0,
@@ -200,22 +204,26 @@ def get_dyd_status(session: Session) -> Dict[str, int]:
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DYD_MAPPINGS"):
         df = _execute_sql(session, f"SELECT COUNT(*) AS CNT FROM {DEFAULT_CONTROLS_SCHEMA}.DYD_MAPPINGS")
-        status["mappings"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+        if not df.empty and "CNT" in df.columns:
+            status["mappings"] = int(df.iloc[0, 0] or 0)
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DYD_METADATA"):
         df = _execute_sql(session, f"SELECT COUNT(*) AS CNT FROM {DEFAULT_CONTROLS_SCHEMA}.DYD_METADATA")
-        status["metadata"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+        if not df.empty and "CNT" in df.columns:
+            status["metadata"] = int(df.iloc[0, 0] or 0)
 
     sql = (
         f"SELECT COUNT(*) AS CNT FROM {DEFAULT_DB}.INFORMATION_SCHEMA.TABLES "
         f"WHERE TABLE_SCHEMA IN ('{DEFAULT_CONFIG.schema_curated.upper()}', '{DEFAULT_CONFIG.schema_analytics.upper()}')"
     )
     df = _execute_sql(session, sql)
-    status["dynamic_tables"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+    if not df.empty and "CNT" in df.columns:
+        status["dynamic_tables"] = int(df.iloc[0, 0] or 0)
 
     if _table_exists(session, DEFAULT_CONTROLS_SCHEMA, "DQ_EXECUTION_RESULTS"):
         df = _execute_sql(session, f"SELECT COUNT(DISTINCT RULE_ID) AS CNT FROM {DEFAULT_CONTROLS_SCHEMA}.DQ_EXECUTION_RESULTS")
-        status["dq_rules_generated"] = int(df.iloc[0][0] or 0) if not df.empty else 0
+        if not df.empty and "CNT" in df.columns:
+            status["dq_rules_generated"] = int(df.iloc[0, 0] or 0)
 
     status["live"] = True
     return status

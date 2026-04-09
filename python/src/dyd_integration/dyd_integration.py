@@ -40,7 +40,7 @@ class DYDMetadata:
 class DYDIntegration:
     """Integrates DYD outputs with Snowflake implementation"""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Any):
         self.session = session
         self.mappings: Dict[str, DYDMapping] = {}
         self.metadata: Dict[str, DYDMetadata] = {}
@@ -129,7 +129,7 @@ class DYDIntegration:
                     INSERT INTO {schema}.DYD_MAPPINGS
                     (SOURCE_SYSTEM, SOURCE_ENTITY, SOURCE_COLUMNS, TARGET_TABLE, TARGET_COLUMNS,
                      MAPPING_CONFIDENCE, TRANSFORMATION_LOGIC, JOIN_KEYS)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     cursor.execute(insert_sql, (
                         mapping.source_system,
@@ -183,7 +183,7 @@ class DYDIntegration:
                     insert_sql = f"""
                     INSERT INTO {schema}.DYD_METADATA
                     (ENTITY_NAME, ENTITY_TYPE, COLUMN_NAME, DATA_TYPE, DESCRIPTION, BUSINESS_TERM, SAMPLE_VALUES)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     cursor.execute(insert_sql, (
                         meta.entity_name,

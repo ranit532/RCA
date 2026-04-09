@@ -303,7 +303,7 @@ class ReconciliationEngine:
                 (RUN_ID, CONTROL_ID, CONTROL_NAME, RECONCILIATION_TYPE, SOURCE_COUNT, TARGET_COUNT,
                  VARIANCE, VARIANCE_PERCENTAGE, PASSED, TOLERANCE_DETAILS, ERROR_MESSAGE,
                  EXECUTION_TIME_SEC, EXECUTED_AT)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(insert_sql, (
                     result_dict["RUN_ID"],

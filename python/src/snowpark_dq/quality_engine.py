@@ -136,7 +136,7 @@ class DataQualityEngine:
                 INSERT INTO """ + table_name + """
                 (RUN_ID, RULE_ID, RULE_NAME, TABLE_NAME, RULE_TYPE, RECORDS_TESTED,
                  RECORDS_FAILED, FAILURE_RATE, PASSED, ERROR_MESSAGE, EXECUTION_TIME_SEC, EXECUTED_AT)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(insert_sql, (
                     result.run_id, result.rule_id, result.rule_name, result.table_name,
