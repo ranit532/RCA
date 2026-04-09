@@ -12,6 +12,7 @@
 ## 📚 Documentation
 
 ### Quick References
+- **[END_TO_END_GUIDE.md](./END_TO_END_GUIDE.md)** - Complete step-by-step walkthrough (recommended)
 - **[QUICK_START.md](./QUICK_START.md)** - Get up and running in 5 minutes
 - **[python/README.md](./python/README.md)** - Comprehensive technical documentation
 - **[DYD_INTEGRATION_GUIDE.md](./DYD_INTEGRATION_GUIDE.md)** - Integration with DYD backend services
