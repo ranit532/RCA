@@ -2,11 +2,10 @@
 import uuid
 import logging
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import time
-from snowpark.session import Session
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ class ReconciliationResult:
 class ReconciliationEngine:
     """Executes reconciliation controls"""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Any):
         self.session = session
         self.run_id = str(uuid.uuid4())
         self.results: List[ReconciliationResult] = []
@@ -81,19 +80,18 @@ class ReconciliationEngine:
     ) -> ReconciliationResult:
         """Execute row count reconciliation"""
         start_time = time.time()
+        cursor = None
         
         try:
+            cursor = self.session.cursor()
+            
             # Get source count
-            source_count_df = self.session.sql(
-                f"SELECT COUNT(*) as cnt FROM {control.source_table}"
-            )
-            source_count = source_count_df.collect()[0][0]
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM {control.source_table}")
+            source_count = cursor.fetchone()[0]
             
             # Get target count
-            target_count_df = self.session.sql(
-                f"SELECT COUNT(*) as cnt FROM {control.target_table}"
-            )
-            target_count = target_count_df.collect()[0][0]
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM {control.target_table}")
+            target_count = cursor.fetchone()[0]
             
             variance = abs(source_count - target_count)
             variance_pct = (variance / source_count * 100) if source_count > 0 else 0
@@ -148,25 +146,31 @@ class ReconciliationEngine:
                 error_message=str(e),
                 execution_time_sec=time.time() - start_time,
             )
+        finally:
+            if cursor:
+                cursor.close()
     
     def execute_sum_recon(self, control: ReconciliationControl) -> ReconciliationResult:
         """Execute sum reconciliation on specified column"""
         start_time = time.time()
+        cursor = None
         
         try:
+            cursor = self.session.cursor()
+            
             # Get source sum
-            source_sum_df = self.session.sql(
+            cursor.execute(
                 f"SELECT COALESCE(SUM({control.source_column}), 0) as sum_val "
                 f"FROM {control.source_table}"
             )
-            source_sum = source_sum_df.collect()[0][0]
+            source_sum = cursor.fetchone()[0]
             
             # Get target sum
-            target_sum_df = self.session.sql(
+            cursor.execute(
                 f"SELECT COALESCE(SUM({control.target_column}), 0) as sum_val "
                 f"FROM {control.target_table}"
             )
-            target_sum = target_sum_df.collect()[0][0]
+            target_sum = cursor.fetchone()[0]
             
             variance = abs(float(source_sum) - float(target_sum))
             variance_pct = (variance / float(source_sum) * 100) if float(source_sum) > 0 else 0
@@ -221,6 +225,9 @@ class ReconciliationEngine:
                 error_message=str(e),
                 execution_time_sec=time.time() - start_time,
             )
+        finally:
+            if cursor:
+                cursor.close()
     
     def execute_control(self, control: ReconciliationControl) -> ReconciliationResult:
         """Execute a reconciliation control based on type"""
@@ -260,9 +267,12 @@ class ReconciliationEngine:
             logger.warning("No results to persist")
             return False
         
+        cursor = None
         try:
+            cursor = self.session.cursor()
+            
             # Ensure schema exists
-            self.session.sql(f"CREATE SCHEMA IF NOT EXISTS {schema}").collect()
+            cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
             
             # Create table if doesn't exist
             create_table_sql = f"""
@@ -279,16 +289,36 @@ class ReconciliationEngine:
                 TOLERANCE_DETAILS VARCHAR,
                 ERROR_MESSAGE VARCHAR,
                 EXECUTION_TIME_SEC NUMBER(10,2),
-                EXECUTED_AT TIMESTAMP_NTZ,
-                PRIMARY KEY (RUN_ID, CONTROL_ID)
+                EXECUTED_AT TIMESTAMP_NTZ
             )
             """
-            self.session.sql(create_table_sql).collect()
+            cursor.execute(create_table_sql)
             
             # Insert results
-            results_data = [r.to_dict() for r in self.results]
-            df = self.session.create_dataframe(results_data)
-            df.write.mode("append").save_as_table(f"{schema}.RECONCILIATION_RESULTS")
+            for result in self.results:
+                result_dict = result.to_dict()
+                insert_sql = f"""
+                INSERT INTO {schema}.RECONCILIATION_RESULTS 
+                (RUN_ID, CONTROL_ID, CONTROL_NAME, RECONCILIATION_TYPE, SOURCE_COUNT, TARGET_COUNT, 
+                 VARIANCE, VARIANCE_PERCENTAGE, PASSED, TOLERANCE_DETAILS, ERROR_MESSAGE, 
+                 EXECUTION_TIME_SEC, EXECUTED_AT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                cursor.execute(insert_sql, (
+                    result_dict["RUN_ID"],
+                    result_dict["CONTROL_ID"],
+                    result_dict["CONTROL_NAME"],
+                    result_dict["RECONCILIATION_TYPE"],
+                    result_dict["SOURCE_COUNT"],
+                    result_dict["TARGET_COUNT"],
+                    result_dict["VARIANCE"],
+                    result_dict["VARIANCE_PERCENTAGE"],
+                    result_dict["PASSED"],
+                    result_dict["TOLERANCE_DETAILS"],
+                    result_dict["ERROR_MESSAGE"],
+                    result_dict["EXECUTION_TIME_SEC"],
+                    result_dict["EXECUTED_AT"],
+                ))
             
             logger.info(f"Persisted {len(self.results)} results")
             return True
@@ -296,6 +326,9 @@ class ReconciliationEngine:
         except Exception as e:
             logger.error(f"Error persisting results: {str(e)}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
     
     def get_summary(self) -> Dict:
         """Get execution summary"""

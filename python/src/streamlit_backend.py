@@ -1,8 +1,7 @@
 """Backend support module for Streamlit RCA PoC."""
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import pandas as pd
-from snowpark.session import Session
 from config.snowflake_config import DEFAULT_CONFIG
 from src.snowpark_dq.session_manager import SnowparkSessionManager
 

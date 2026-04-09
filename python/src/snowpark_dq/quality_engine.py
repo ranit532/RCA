@@ -2,10 +2,9 @@
 import uuid
 import logging
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import time
-from snowpark.session import Session
-from snowpark.dataframe import DataFrame
+import pandas as pd
 from .quality_rules import DQRule, DQResult, RuleType
 
 logger = logging.getLogger(__name__)
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 class DataQualityEngine:
     """Executes data quality rules against datasets"""
     
-    def __init__(self, session: Session):
+    def __init__(self, session: Any):
         self.session = session
         self.run_id = str(uuid.uuid4())
         self.results: List[DQResult] = []
@@ -26,21 +25,20 @@ class DataQualityEngine:
         
         source_table = table_name or rule.table_name
         start_time = time.time()
+        cursor = None
         
         try:
+            cursor = self.session.cursor()
+            
             # Get total record count
-            total_df = self.session.sql(
-                f"SELECT COUNT(*) as cnt FROM {source_table}"
-            )
-            total_count = total_df.collect()[0][0]
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM {source_table}")
+            total_count = cursor.fetchone()[0]
             
             # Count records that FAIL the rule (NOT matching the logic)
-            failed_df = self.session.sql(
-                f"""SELECT COUNT(*) as cnt 
+            cursor.execute(f"""SELECT COUNT(*) as cnt 
                    FROM {source_table} 
-                   WHERE NOT ({rule.sql_logic})"""
-            )
-            failed_count = failed_df.collect()[0][0]
+                   WHERE NOT ({rule.sql_logic})""")
+            failed_count = cursor.fetchone()[0]
             
             execution_time = time.time() - start_time
             failure_rate = (failed_count / total_count * 100) if total_count > 0 else 0
@@ -87,6 +85,9 @@ class DataQualityEngine:
             )
             self.results.append(result)
             return result
+        finally:
+            if cursor:
+                cursor.close()
     
     def execute_rules(self, rules: List[DQRule]) -> List[DQResult]:
         """Execute multiple data quality rules"""
@@ -103,9 +104,12 @@ class DataQualityEngine:
             logger.warning("No results to persist")
             return False
         
+        cursor = None
         try:
+            cursor = self.session.cursor()
+            
             # Ensure controls schema and table exist
-            self.session.sql(f"CREATE SCHEMA IF NOT EXISTS {schema}").collect()
+            cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
             
             create_table_sql = f"""
             CREATE TABLE IF NOT EXISTS {schema}.DQ_EXECUTION_RESULTS (
@@ -120,18 +124,25 @@ class DataQualityEngine:
                 PASSED BOOLEAN,
                 ERROR_MESSAGE VARCHAR,
                 EXECUTION_TIME_SEC NUMBER(10,2),
-                EXECUTED_AT TIMESTAMP_NTZ,
-                PRIMARY KEY (RUN_ID, RULE_ID)
+                EXECUTED_AT TIMESTAMP_NTZ
             )
             """
-            self.session.sql(create_table_sql).collect()
+            cursor.execute(create_table_sql)
             
-            # Convert results to dataframe and insert
-            results_data = [r.to_dict() for r in self.results]
-            df = self.session.create_dataframe(results_data)
-            df.write.mode("append").save_as_table(
-                f"{schema}.DQ_EXECUTION_RESULTS"
-            )
+            # Insert results
+            for result in self.results:
+                insert_sql = f"""
+                INSERT INTO {schema}.DQ_EXECUTION_RESULTS 
+                (RUN_ID, RULE_ID, RULE_NAME, TABLE_NAME, RULE_TYPE, RECORDS_TESTED, 
+                 RECORDS_FAILED, FAILURE_RATE, PASSED, ERROR_MESSAGE, EXECUTION_TIME_SEC, EXECUTED_AT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                cursor.execute(insert_sql, (
+                    result.run_id, result.rule_id, result.rule_name, result.table_name,
+                    result.rule_type, result.records_tested, result.records_failed,
+                    result.failure_rate, result.passed, result.error_message,
+                    result.execution_time_sec, datetime.utcnow()
+                ))
             
             logger.info(f"Persisted {len(self.results)} results to {schema}.DQ_EXECUTION_RESULTS")
             return True
@@ -139,6 +150,9 @@ class DataQualityEngine:
         except Exception as e:
             logger.error(f"Error persisting results: {str(e)}")
             return False
+        finally:
+            if cursor:
+                cursor.close()
     
     def get_summary(self) -> Dict:
         """Get summary statistics for execution"""

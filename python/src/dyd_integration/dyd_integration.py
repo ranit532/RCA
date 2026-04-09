@@ -1,10 +1,9 @@
 """DYD (Discover Your Data) Integration Module"""
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
-from snowpark.session import Session
 
 logger = logging.getLogger(__name__)
 
