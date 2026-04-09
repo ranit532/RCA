@@ -227,7 +227,7 @@
         </mxCell>
         <mxCell id="arrow-4-5" edge="1" parent="lane4-header" source="orch-5" target="orch-6">
           <mxGeometry relative="1" as="geometry"/>
-        </mxChild>
+        </mxCell>
         <mxCell id="arrow-4-6" edge="1" parent="lane4-header" source="orch-6" target="orch-7">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
