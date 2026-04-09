@@ -11,7 +11,7 @@ USE DATABASE RCA_POC_DB;
 -- =====================================================
 
 CREATE OR REPLACE DYNAMIC TABLE DT_DIM_PARTY_CURATED
-TARGET_LAG = '1 hour'
+TARGET_LAG = '15 minutes'
 WAREHOUSE = RCA_INGEST_WH
 AS
 SELECT
@@ -26,11 +26,11 @@ SELECT
 FROM RAW.DIM_PARTY_RAW
 WHERE PARTY_ID IS NOT NULL;
 
-COMMENT ON DYNAMIC TABLE DT_DIM_PARTY_CURATED = 'Curated party dimension with data quality enrichment';
+COMMENT ON DYNAMIC TABLE DT_DIM_PARTY_CURATED IS 'Curated party dimension with data quality enrichment';
 
 -- Account Dimension with business logic
 CREATE OR REPLACE DYNAMIC TABLE DT_DIM_ACCOUNT_CURATED
-TARGET_LAG = '1 hour'
+TARGET_LAG = '15 minutes'
 WAREHOUSE = RCA_INGEST_WH
 AS
 SELECT
@@ -49,11 +49,11 @@ LEFT JOIN DT_DIM_PARTY_CURATED p
   ON a.PARTY_ID = p.PARTY_ID
 WHERE a.ACCOUNT_ID IS NOT NULL;
 
-COMMENT ON DYNAMIC TABLE DT_DIM_ACCOUNT_CURATED = 'Curated account dimension with party reference';
+COMMENT ON DYNAMIC TABLE DT_DIM_ACCOUNT_CURATED IS 'Curated account dimension with party reference';
 
 -- Instrument Dimension
 CREATE OR REPLACE DYNAMIC TABLE DT_DIM_INSTRUMENT_CURATED
-TARGET_LAG = '1 hour'
+TARGET_LAG = '15 minutes'
 WAREHOUSE = RCA_INGEST_WH
 AS
 SELECT
@@ -69,7 +69,7 @@ FROM RAW.DIM_INSTRUMENT_RAW
 WHERE INSTRUMENT_ID IS NOT NULL
   AND ISIN IS NOT NULL;
 
-COMMENT ON DYNAMIC TABLE DT_DIM_INSTRUMENT_CURATED = 'Curated instrument dimension with validation flags';
+COMMENT ON DYNAMIC TABLE DT_DIM_INSTRUMENT_CURATED IS 'Curated instrument dimension with validation flags';
 
 -- =====================================================
 -- CURATED LAYER - Fact Tables
@@ -108,7 +108,7 @@ LEFT JOIN DT_DIM_ACCOUNT_CURATED a
 LEFT JOIN DT_DIM_INSTRUMENT_CURATED i
   ON t.INSTRUMENT_ID = i.INSTRUMENT_ID;
 
-COMMENT ON DYNAMIC TABLE DT_FCT_TRADE_CURATED = 'Curated trade fact table with referential integrity checks';
+COMMENT ON DYNAMIC TABLE DT_FCT_TRADE_CURATED IS 'Curated trade fact table with referential integrity checks';
 
 -- =====================================================
 -- ANALYTICS LAYER - Aggregated Views
@@ -140,7 +140,7 @@ GROUP BY
   ASSET_CLASS,
   SIDE;
 
-COMMENT ON DYNAMIC TABLE DT_TRADE_DAILY_SUMMARY = 'Daily trade analytics summary';
+COMMENT ON DYNAMIC TABLE DT_TRADE_DAILY_SUMMARY IS 'Daily trade analytics summary';
 
 -- Account-level analytics
 CREATE OR REPLACE DYNAMIC TABLE DT_ACCOUNT_ANALYTICS
@@ -173,4 +173,4 @@ GROUP BY
   p.PARTY_NAME,
   a.ACCOUNT_TYPE;
 
-COMMENT ON DYNAMIC TABLE DT_ACCOUNT_ANALYTICS = 'Account-level analytics with data quality indicators';
+COMMENT ON DYNAMIC TABLE DT_ACCOUNT_ANALYTICS IS 'Account-level analytics with data quality indicators';
