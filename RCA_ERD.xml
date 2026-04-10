@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" modified="2026-04-10" agent="RCA PoC ERD" version="1.0" type="device">
+  <diagram id="rca-poc-erd" name="RCA PoC - ER Diagram">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- RAW schema tables -->
+        <mxCell id="raw_dim_party" value="RAW.DIM_PARTY_RAW&#10;PK: PARTY_ID&#10;PARTY_CODE&#10;PARTY_NAME&#10;PARTY_TYPE&#10;ONBOARDING_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d4e6f1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="190" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="raw_dim_account" value="RAW.DIM_ACCOUNT_RAW&#10;PK: ACCOUNT_ID&#10;ACCOUNT_CODE&#10;PARTY_ID (FK → DIM_PARTY_RAW)&#10;ACCOUNT_TYPE&#10;ACCOUNT_OPEN_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d4e6f1;" vertex="1" parent="1">
+          <mxGeometry x="270" y="80" width="210" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="raw_dim_instrument" value="RAW.DIM_INSTRUMENT_RAW&#10;PK: INSTRUMENT_ID&#10;ISIN&#10;RIC&#10;ASSET_CLASS&#10;REFERENCE_PRICE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d4e6f1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="80" width="210" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="raw_fct_trade" value="RAW.FCT_TRADE_RAW&#10;PK: TRADE_ID&#10;ACCOUNT_ID (FK → DIM_ACCOUNT_RAW)&#10;INSTRUMENT_ID (FK → DIM_INSTRUMENT_RAW)&#10;TRADE_TS_UTC&#10;SIDE, QUANTITY, PRICE&#10;GROSS_AMOUNT, CURRENCY" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d6eaf8;" vertex="1" parent="1">
+          <mxGeometry x="270" y="230" width="260" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="raw_fct_trade_stream" value="RAW.FCT_TRADE_STREAM_RAW&#10;LIKE FCT_TRADE_RAW (streaming)&#10;PK: TRADE_ID" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d6eaf8;" vertex="1" parent="1">
+          <mxGeometry x="580" y="250" width="220" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- CURATED base tables -->
+        <mxCell id="cur_dim_party" value="CURATED.DIM_PARTY&#10;PK: PARTY_ID&#10;PARTY_CODE&#10;PARTY_NAME&#10;PARTY_TYPE&#10;ONBOARDING_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d5f5e3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="190" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cur_dim_account" value="CURATED.DIM_ACCOUNT&#10;PK: ACCOUNT_ID&#10;ACCOUNT_CODE&#10;PARTY_ID (FK → DIM_PARTY)&#10;ACCOUNT_TYPE&#10;ACCOUNT_OPEN_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d5f5e3;" vertex="1" parent="1">
+          <mxGeometry x="270" y="420" width="210" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cur_dim_instrument" value="CURATED.DIM_INSTRUMENT&#10;PK: INSTRUMENT_ID&#10;ISIN&#10;RIC&#10;ASSET_CLASS&#10;REFERENCE_PRICE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d5f5e3;" vertex="1" parent="1">
+          <mxGeometry x="520" y="420" width="210" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cur_fct_trade" value="CURATED.FCT_TRADE&#10;PK: TRADE_ID&#10;ACCOUNT_ID (FK → DIM_ACCOUNT)&#10;INSTRUMENT_ID (FK → DIM_INSTRUMENT)&#10;History + streaming" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#abebc6;" vertex="1" parent="1">
+          <mxGeometry x="270" y="570" width="260" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- CURATED dynamic tables (DT_*) -->
+        <mxCell id="dt_dim_party" value="CURATED.DT_DIM_PARTY_CURATED&#10;PK: PARTY_ID&#10;Derived from RAW.DIM_PARTY_RAW&#10;Enriched with flags" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f9e79f;" vertex="1" parent="1">
+          <mxGeometry x="840" y="80" width="230" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dt_dim_account" value="CURATED.DT_DIM_ACCOUNT_CURATED&#10;PK: ACCOUNT_ID&#10;ACCOUNT_CODE&#10;PARTY_ID (FK → DT_DIM_PARTY_CURATED)&#10;ACCOUNT_TYPE, ACCOUNT_OPEN_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f9e79f;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="260" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dt_dim_instrument" value="CURATED.DT_DIM_INSTRUMENT_CURATED&#10;PK: INSTRUMENT_ID&#10;ISIN, RIC&#10;ASSET_CLASS&#10;REFERENCE_PRICE&#10;Validation flags" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f9e79f;" vertex="1" parent="1">
+          <mxGeometry x="840" y="230" width="230" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dt_fct_trade" value="CURATED.DT_FCT_TRADE_CURATED&#10;PK: TRADE_ID&#10;ACCOUNT_ID (FK → DT_DIM_ACCOUNT_CURATED)&#10;INSTRUMENT_ID (FK → DT_DIM_INSTRUMENT_CURATED)&#10;TRADE_TS_UTC, SIDE, QUANTITY, PRICE&#10;GROSS_AMOUNT, CURRENCY&#10;DQ flags, TRADE_HASH" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f7dc6f;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="250" width="280" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- Analytics dynamic tables (in CURATED schema) -->
+        <mxCell id="dt_trade_daily_summary" value="CURATED.DT_TRADE_DAILY_SUMMARY&#10;PK: TRADE_DATE, ASSET_CLASS, SIDE&#10;Aggregated metrics from DT_FCT_TRADE_CURATED" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#fadbd8;" vertex="1" parent="1">
+          <mxGeometry x="840" y="460" width="260" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dt_account_analytics" value="CURATED.DT_ACCOUNT_ANALYTICS&#10;PK: ACCOUNT_ID&#10;ACCOUNT_CODE, PARTY_ID&#10;TRADE_COUNT, BUY_AMOUNT, SELL_AMOUNT&#10;TOTAL_AMOUNT, LAST_TRADE_DATE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#fadbd8;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="460" width="280" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- CONTROLS schema tables -->
+        <mxCell id="controls_dq_metrics_log" value="CONTROLS.DQ_METRICS_LOG&#10;PK: EXECUTION_ID (logical)&#10;METRIC_NAME&#10;METRIC_VALUE, THRESHOLD_VALUE&#10;PASSED, CALCULATED_AT&#10;SOURCE_TABLE, SOURCE_COLUMN" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ebdef0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="270" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="controls_dq_execution_results" value="CONTROLS.DQ_EXECUTION_RESULTS&#10;RUN_ID, RULE_ID (PK)&#10;RULE_NAME, TABLE_NAME&#10;RULE_TYPE, PASSED, FAILURE_RATE&#10;EXECUTED_AT" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ebdef0;" vertex="1" parent="1">
+          <mxGeometry x="340" y="730" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="controls_recon_results" value="CONTROLS.RECONCILIATION_RESULTS&#10;RUN_ID, CONTROL_ID (PK)&#10;SOURCE_COUNT, TARGET_COUNT&#10;VARIANCE, PASSED&#10;EXECUTED_AT" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ebdef0;" vertex="1" parent="1">
+          <mxGeometry x="660" y="730" width="260" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: RAW schema -->
+        <mxCell id="rel_raw_party_account" edge="1" parent="1" source="raw_dim_party" target="raw_dim_account">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_raw_account_fact" edge="1" parent="1" source="raw_dim_account" target="raw_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_raw_instrument_fact" edge="1" parent="1" source="raw_dim_instrument" target="raw_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: CURATED base schema -->
+        <mxCell id="rel_cur_party_account" edge="1" parent="1" source="cur_dim_party" target="cur_dim_account">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_cur_account_fact" edge="1" parent="1" source="cur_dim_account" target="cur_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_cur_instrument_fact" edge="1" parent="1" source="cur_dim_instrument" target="cur_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: DT_* curated layer -->
+        <mxCell id="rel_dt_party_account" edge="1" parent="1" source="dt_dim_party" target="dt_dim_account">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_dt_account_fact" edge="1" parent="1" source="dt_dim_account" target="dt_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_dt_instrument_fact" edge="1" parent="1" source="dt_dim_instrument" target="dt_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: source to curated/dynamic facts -->
+        <mxCell id="rel_raw_fact_curated_fact" edge="1" parent="1" source="raw_fct_trade" target="cur_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_raw_fact_dt_fact" edge="1" parent="1" source="raw_fct_trade" target="dt_fct_trade">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: analytics dynamic tables -->
+        <mxCell id="rel_dt_fact_daily_summary" edge="1" parent="1" source="dt_fct_trade" target="dt_trade_daily_summary">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_dt_fact_account_analytics" edge="1" parent="1" source="dt_fct_trade" target="dt_account_analytics">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_dt_account_account_analytics" edge="1" parent="1" source="dt_dim_account" target="dt_account_analytics">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: controls to facts (logical lineage) -->
+        <mxCell id="rel_dt_fact_dq_metrics" edge="1" parent="1" source="dt_fct_trade" target="controls_dq_metrics_log">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

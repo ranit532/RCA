@@ -5,6 +5,7 @@
 -- with automatic refresh dependency handling
 
 USE DATABASE RCA_POC_DB;
+USE SCHEMA CURATED;
 
 -- =====================================================
 -- CURATED LAYER - Conformed Asset Dimensions

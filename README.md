@@ -54,6 +54,20 @@ cd python
 python orchestrate.py
 ```
 
+### Test the PoC
+Run component-level checks before or after orchestration to verify connection, rule execution, and persistence:
+```bash
+cd python
+python test_connection.py
+python test_dq.py
+```
+
+These tests validate:
+- Snowflake connectivity
+- Raw data availability
+- Data quality rule execution
+- End-to-end engine readiness
+
 ### View (Dashboard)
 ```bash
 cd python/streamlit_app
@@ -61,6 +75,34 @@ streamlit run app.py
 ```
 
 Browse to: `http://localhost:8501`
+
+### React Frontend + Python Backend
+If you want a richer, production-style UI, use the React frontend with a Python API backend.
+
+1. Install Python dependencies:
+```bash
+cd python
+pip install -r requirements.txt
+```
+
+2. Start the Python API server:
+```bash
+cd python
+uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
+```
+
+3. Start the React frontend:
+```bash
+cd react-frontend
+npm install
+npm run dev
+```
+
+4. Open the React app in the browser at the address shown by Vite (typically `http://localhost:5173`).
+
+This setup keeps the Snowflake data and service logic in Python, while the UI is built in React for a more polished frontend experience.
+
+> Note: The React UI is intentionally designed without emoji-based status labels and uses standard enterprise styling.
 
 ---
 
