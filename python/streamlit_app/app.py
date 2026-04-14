@@ -23,6 +23,9 @@ from src.streamlit_backend import (
     get_recon_results,
     get_audit_trail,
     get_dyd_status,
+    get_cortex_insight,
+    build_dq_summary_prompt,
+    CORTEX_DEFAULT_MODEL,
 )
 
 # Configure Streamlit
@@ -254,7 +257,7 @@ def render_reconciliation_dashboard():
 
 def render_audit_trail():
     """Render audit trail and execution history"""
-st.subheader("Execution Audit Trail")
+    st.subheader("Execution Audit Trail")
     
     df_audit = get_audit_trail(session)
     if df_audit.empty:
@@ -337,6 +340,74 @@ def render_dyd_integration_status():
         - 🔍 Observability via Snowflake Horizon
         """)
 
+def render_cortex_ai():
+    """Render Snowflake Cortex AI Insights panel"""
+    st.subheader("Cortex AI Insights")
+    st.caption("Powered by Snowflake Cortex — Mistral Large 2")
+
+    model_options = [
+        "mistral-large2",
+        "llama3.1-70b",
+        "llama3.1-8b",
+        "snowflake-arctic",
+    ]
+    col_model, col_btn = st.columns([3, 1])
+    with col_model:
+        selected_model = st.selectbox("Cortex Model:", model_options, index=0)
+
+    # --- Auto-generated executive summary ---
+    st.markdown("#### Executive Data Quality Summary")
+    with col_btn:
+        st.markdown("&nbsp;", unsafe_allow_html=True)  # vertical align
+        generate_clicked = st.button("Generate", use_container_width=True)
+
+    if generate_clicked:
+        with st.spinner("Calling Snowflake Cortex AI..."):
+            metrics = get_overview_metrics(session)
+            dq_df = get_dq_results(session)
+            recon_df = get_recon_results(session)
+
+            # Rename columns so build_dq_summary_prompt can find them
+            if not dq_df.empty and "PASSED" in dq_df.columns:
+                dq_df = dq_df.rename(columns={"PASSED": "Status"})
+                dq_df["Status"] = dq_df["Status"].apply(lambda x: "PASS" if x else "FAIL")
+            if not recon_df.empty and "PASSED" in recon_df.columns:
+                recon_df = recon_df.rename(columns={
+                    "CONTROL_NAME": "Control Name",
+                    "PASSED": "Status",
+                })
+                recon_df["Status"] = recon_df["Status"].apply(lambda x: "PASS" if x else "FAIL")
+
+            prompt = build_dq_summary_prompt(metrics, dq_df, recon_df)
+            response = get_cortex_insight(session, prompt, model=selected_model)
+        st.info(response)
+
+    st.markdown("---")
+
+    # --- Free-form chat with Cortex ---
+    st.markdown("#### Ask Cortex About Your Data")
+    user_question = st.text_area(
+        "Enter your question:",
+        placeholder=(
+            "e.g. What are the top risks in our current data quality results?  "
+            "Or: Suggest remediation steps for failed reconciliation controls."
+        ),
+        height=100,
+    )
+    if st.button("Ask Cortex", use_container_width=False):
+        if not user_question.strip():
+            st.warning("Please enter a question before submitting.")
+        else:
+            context_prompt = (
+                "You are a financial data governance expert for an asset management firm. "
+                "Answer the following question concisely and professionally:\n\n"
+                + user_question.strip()
+            )
+            with st.spinner("Thinking..."):
+                answer = get_cortex_insight(session, context_prompt, model=selected_model)
+            st.success(answer)
+
+
 def render_controls():
     """Render action controls"""
     st.subheader("Controls & Actions")
@@ -371,6 +442,7 @@ def render_sidebar():
                 "Reconciliation",
                 "Audit Trail",
                 "DYD Integration",
+                "Cortex AI",
                 "Settings"
             ],
             label_visibility="collapsed"
@@ -443,6 +515,9 @@ def main():
     elif view_option == "DYD Integration":
         render_dyd_integration_status()
     
+    elif view_option == "Cortex AI":
+        render_cortex_ai()
+
     elif view_option == "Settings":
         st.subheader("Application Settings")
         st.write("Settings configuration is coming soon.")

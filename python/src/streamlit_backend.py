@@ -227,3 +227,64 @@ def get_dyd_status(session: Any) -> Dict[str, int]:
 
     status["live"] = True
     return status
+
+
+# ---------------------------------------------------------------------------
+# Snowflake Cortex AI
+# ---------------------------------------------------------------------------
+
+CORTEX_DEFAULT_MODEL = "mistral-large2"
+
+
+def get_cortex_insight(session: Any, prompt: str, model: str = CORTEX_DEFAULT_MODEL) -> str:
+    """Call Snowflake Cortex COMPLETE and return the generated text."""
+    if session is None:
+        return "Cortex AI is unavailable: no active Snowflake session."
+    try:
+        cursor = session.cursor()
+        cursor.execute(
+            "SELECT SNOWFLAKE.CORTEX.COMPLETE(%s, %s) AS RESPONSE",
+            (model, prompt),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        if row and row[0]:
+            return str(row[0]).strip()
+        return "Cortex AI returned an empty response."
+    except Exception as exc:
+        logger.error(f"Cortex AI call failed: {exc}")
+        return f"Cortex AI is not available in this Snowflake account or region. Error: {exc}"
+
+
+def build_dq_summary_prompt(metrics: Dict[str, int], dq_df: pd.DataFrame, recon_df: pd.DataFrame) -> str:
+    """Build a structured prompt summarising current DQ and reconciliation metrics."""
+    dq_total = metrics.get("dq_total", 0)
+    dq_passed = metrics.get("dq_passed", 0)
+    recon_total = metrics.get("recon_total", 0)
+    recon_passed = metrics.get("recon_passed", 0)
+
+    failed_rules = ""
+    if not dq_df.empty and "Rule Name" in dq_df.columns and "Status" in dq_df.columns:
+        failed = dq_df[dq_df["Status"] == "FAIL"]
+        if not failed.empty:
+            failed_rules = ", ".join(failed["Rule Name"].tolist())
+
+    failed_controls = ""
+    if not recon_df.empty and "Control Name" in recon_df.columns and "Status" in recon_df.columns:
+        failed = recon_df[recon_df["Status"] != "PASS"]
+        if not failed.empty:
+            failed_controls = ", ".join(failed["Control Name"].tolist())
+
+    prompt = (
+        "You are a financial data quality analyst. Based on the following RCA (Risk Controls & Analytics) "
+        "data quality metrics for an asset management platform, provide a concise executive summary "
+        "(3-5 sentences) covering: overall data health, key risks, and one actionable recommendation.\n\n"
+        f"Data Quality Rules: {dq_passed}/{dq_total} passed.\n"
+        f"Reconciliation Controls: {recon_passed}/{recon_total} passed.\n"
+    )
+    if failed_rules:
+        prompt += f"Failed DQ rules: {failed_rules}.\n"
+    if failed_controls:
+        prompt += f"Failed/review reconciliation controls: {failed_controls}.\n"
+    prompt += "\nExecutive Summary:"
+    return prompt

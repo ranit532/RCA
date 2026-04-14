@@ -69,46 +69,13 @@ echo.
 
 REM Run orchestration
 echo =====================================================
-echo Execution Options
+echo Launching Streamlit Controls Cockpit (feature branch)
 echo =====================================================
 echo.
-echo 1. Run Data Quality ^& Reconciliation Orchestration
-echo    python orchestrate.py
+echo Streamlit UI is the primary interface for this branch.
+echo Cortex AI panel available under the 'Cortex AI' sidebar tab.
 echo.
-echo 2. Launch Streamlit Controls Cockpit
-echo    cd streamlit_app ^&^& streamlit run app.py
-echo.
-echo 3. Run DYD Integration Example
-echo    python examples\dyd_backend_integration.py
-echo.
-echo 4. Generate Sample DYD Configuration
-echo    python examples\dyd_sample_config.py
-echo.
-echo =====================================================
-echo.
-
-set /p choice="Select option (1-4): "
-
-if "%choice%"=="1" (
-    echo.
-    echo Running Orchestration...
-    python orchestrate.py
-) else if "%choice%"=="2" (
-    echo.
-    echo Launching Streamlit Dashboard...
-    cd /d streamlit_app
-    streamlit run app.py
-) else if "%choice%"=="3" (
-    echo.
-    echo Running DYD Backend Integration Example...
-    python examples\dyd_backend_integration.py
-) else if "%choice%"=="4" (
-    echo.
-    echo Generating Sample DYD Configuration...
-    python examples\dyd_sample_config.py
-) else (
-    echo Invalid option
-    exit /b 1
-)
+cd /d streamlit_app
+streamlit run app.py
 
 pause

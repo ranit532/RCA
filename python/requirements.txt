@@ -6,5 +6,3 @@ python-dotenv
 pydantic
 requests
 pyarrow
-fastapi
-uvicorn[standard]
