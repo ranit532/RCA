@@ -9,16 +9,26 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_DB = DEFAULT_CONFIG.database
 DEFAULT_CONTROLS_SCHEMA = DEFAULT_CONFIG.schema_controls
+LAST_CONNECTION_ERROR = ""
 
 # Snowflake session helpers
 
 def initialize_snowflake_session() -> Optional[Any]:
     """Initialize and return a Snowflake connection."""
+    global LAST_CONNECTION_ERROR
     try:
-        return SnowparkSessionManager.initialize(DEFAULT_CONFIG)
+        session = SnowparkSessionManager.initialize(DEFAULT_CONFIG)
+        LAST_CONNECTION_ERROR = ""
+        return session
     except Exception as exc:
+        LAST_CONNECTION_ERROR = str(exc)
         logger.error(f"Unable to initialize Snowflake session: {exc}")
         return None
+
+
+def get_last_connection_error() -> str:
+    """Return the most recent Snowflake connection error, if any."""
+    return LAST_CONNECTION_ERROR
 
 
 def close_snowflake_session() -> None:

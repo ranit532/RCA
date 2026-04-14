@@ -26,6 +26,7 @@ from src.streamlit_backend import (
     get_cortex_insight,
     build_dq_summary_prompt,
     CORTEX_DEFAULT_MODEL,
+    get_last_connection_error,
 )
 
 # Configure Streamlit
@@ -378,6 +379,9 @@ def render_cortex_ai():
         active_session = ensure_active_session()
         if active_session is None:
             st.error("Unable to connect to Snowflake. Please complete SSO login and try again.")
+            last_error = get_last_connection_error()
+            if last_error:
+                st.caption(f"Connection error details: {last_error}")
             return
 
         with st.spinner("Calling Snowflake Cortex AI..."):
@@ -419,6 +423,9 @@ def render_cortex_ai():
             active_session = ensure_active_session()
             if active_session is None:
                 st.error("Unable to connect to Snowflake. Please complete SSO login and try again.")
+                last_error = get_last_connection_error()
+                if last_error:
+                    st.caption(f"Connection error details: {last_error}")
                 return
 
             context_prompt = (
