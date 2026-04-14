@@ -146,6 +146,18 @@
         <mxCell id="integration-backend" value="DYD Backend&#10;Discovery Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4d03f;fontSize=11;" vertex="1" parent="lane3-header">
           <mxGeometry x="930" y="50" width="140" height="60" as="geometry"/>
         </mxCell>
+
+        <mxCell id="cortex-panel" value="Cortex AI Panel&#10;(Summary + Q&amp;A)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9e79f;fontSize=11;fontStyle=1;" vertex="1" parent="lane3-header">
+          <mxGeometry x="560" y="50" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cortex-service" value="Snowflake Cortex Service&#10;SNOWFLAKE.CORTEX.COMPLETE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5cba7;fontSize=10;" vertex="1" parent="lane3-header">
+          <mxGeometry x="1100" y="50" width="220" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cortex-audit" value="CONTROLS.CORTEX_INTERACTIONS&#10;Prompt/response audit trail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8daef;fontSize=10;" vertex="1" parent="lane3-header">
+          <mxGeometry x="1100" y="120" width="220" height="50" as="geometry"/>
+        </mxCell>
         
         <!-- API documentation -->
         <mxCell id="api-call-2" value="API: REST Calls to DYD Backend&#10;- GET /discover (entity discovery)&#10;- GET /mappings (data mapping)&#10;- POST /validate (validation)" style="text;html=1;fontSize=9;align=left;verticalAlign=top;fillColor=#fff9e6;rounded=1;" vertex="1" parent="lane3-header">
@@ -155,6 +167,10 @@
         <!-- Streamlit API documentation -->
         <mxCell id="api-call-3" value="API: Streamlit Data Retrieval&#10;- st.session_state for caching&#10;- Direct SQL queries&#10;- Real-time metric updates" style="text;html=1;fontSize=9;align=left;verticalAlign=top;fillColor=#e8f8f5;rounded=1;" vertex="1" parent="lane3-header">
           <mxGeometry x="220" y="115" width="300" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api-call-4" value="API: Cortex Inference&#10;- Build prompt from DQ/Reconciliation tables&#10;- Call SNOWFLAKE.CORTEX.COMPLETE(model, prompt)&#10;- Persist response in CONTROLS.CORTEX_INTERACTIONS" style="text;html=1;fontSize=9;align=left;verticalAlign=top;fillColor=#fcf3cf;rounded=1;" vertex="1" parent="lane3-header">
+          <mxGeometry x="520" y="115" width="540" height="60" as="geometry"/>
         </mxCell>
         
         <!-- Arrows -->
@@ -171,6 +187,18 @@
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
         <mxCell id="arrow-3-5" edge="1" parent="lane3-header" source="integration-dyd" target="integration-backend">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-3-6" edge="1" parent="lane3-header" source="analytics-3" target="cortex-panel">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-3-7" edge="1" parent="lane3-header" source="cortex-panel" target="cortex-service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-3-8" edge="1" parent="lane3-header" source="cortex-service" target="cortex-panel">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-3-9" edge="1" parent="lane3-header" source="cortex-panel" target="cortex-audit">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
         

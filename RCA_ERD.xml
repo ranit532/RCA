@@ -83,6 +83,19 @@
           <mxGeometry x="660" y="730" width="260" height="120" as="geometry"/>
         </mxCell>
 
+        <mxCell id="controls_cortex_interactions" value="CONTROLS.CORTEX_INTERACTIONS&#10;INTERACTION_ID (PK)&#10;USER_ID&#10;MODEL_NAME&#10;PROMPT_TEXT, RESPONSE_TEXT&#10;CREATED_AT" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#e8daef;" vertex="1" parent="1">
+          <mxGeometry x="960" y="730" width="290" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- Application and AI service integration -->
+        <mxCell id="app_streamlit_cortex" value="STREAMLIT.CORTEX_PANEL&#10;Executive summary + Q&amp;A&#10;Builds prompts from CONTROLS" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#d6eaf8;" vertex="1" parent="1">
+          <mxGeometry x="540" y="930" width="260" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ai_cortex_service" value="SNOWFLAKE.CORTEX.COMPLETE&#10;LLM inference service&#10;Returns generated insight text" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5cba7;" vertex="1" parent="1">
+          <mxGeometry x="850" y="930" width="280" height="110" as="geometry"/>
+        </mxCell>
+
         <!-- Relationships: RAW schema -->
         <mxCell id="rel_raw_party_account" edge="1" parent="1" source="raw_dim_party" target="raw_dim_account">
           <mxGeometry relative="1" as="geometry"/>
@@ -146,6 +159,27 @@
 
         <!-- Relationships: controls to facts (logical lineage) -->
         <mxCell id="rel_dt_fact_dq_metrics" edge="1" parent="1" source="dt_fct_trade" target="controls_dq_metrics_log">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Relationships: Cortex AI interaction flow -->
+        <mxCell id="rel_controls_dq_to_cortex_app" edge="1" parent="1" source="controls_dq_execution_results" target="app_streamlit_cortex">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_controls_recon_to_cortex_app" edge="1" parent="1" source="controls_recon_results" target="app_streamlit_cortex">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_cortex_app_to_service" edge="1" parent="1" source="app_streamlit_cortex" target="ai_cortex_service">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_cortex_service_to_app" edge="1" parent="1" source="ai_cortex_service" target="app_streamlit_cortex">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel_cortex_app_to_audit" edge="1" parent="1" source="app_streamlit_cortex" target="controls_cortex_interactions">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
 
