@@ -48,6 +48,19 @@ def get_snowflake_session():
 
 session = get_snowflake_session()
 
+
+def ensure_active_session():
+    """Get a live Snowflake session, retrying once if startup connection failed."""
+    global session
+    active_session = session
+    if active_session is not None:
+        return active_session
+
+    # If the cached startup session is None, clear cache and retry once.
+    st.cache_resource.clear()
+    session = initialize_snowflake_session()
+    return session
+
 # Custom CSS for better styling
 st.markdown("""
 <style>
@@ -362,10 +375,15 @@ def render_cortex_ai():
         generate_clicked = st.button("Generate", use_container_width=True)
 
     if generate_clicked:
+        active_session = ensure_active_session()
+        if active_session is None:
+            st.error("Unable to connect to Snowflake. Please complete SSO login and try again.")
+            return
+
         with st.spinner("Calling Snowflake Cortex AI..."):
-            metrics = get_overview_metrics(session)
-            dq_df = get_dq_results(session)
-            recon_df = get_recon_results(session)
+            metrics = get_overview_metrics(active_session)
+            dq_df = get_dq_results(active_session)
+            recon_df = get_recon_results(active_session)
 
             # Rename columns so build_dq_summary_prompt can find them
             if not dq_df.empty and "PASSED" in dq_df.columns:
@@ -379,7 +397,7 @@ def render_cortex_ai():
                 recon_df["Status"] = recon_df["Status"].apply(lambda x: "PASS" if x else "FAIL")
 
             prompt = build_dq_summary_prompt(metrics, dq_df, recon_df)
-            response = get_cortex_insight(session, prompt, model=selected_model)
+            response = get_cortex_insight(active_session, prompt, model=selected_model)
         st.info(response)
 
     st.markdown("---")
@@ -398,13 +416,18 @@ def render_cortex_ai():
         if not user_question.strip():
             st.warning("Please enter a question before submitting.")
         else:
+            active_session = ensure_active_session()
+            if active_session is None:
+                st.error("Unable to connect to Snowflake. Please complete SSO login and try again.")
+                return
+
             context_prompt = (
                 "You are a financial data governance expert for an asset management firm. "
                 "Answer the following question concisely and professionally:\n\n"
                 + user_question.strip()
             )
             with st.spinner("Thinking..."):
-                answer = get_cortex_insight(session, context_prompt, model=selected_model)
+                answer = get_cortex_insight(active_session, context_prompt, model=selected_model)
             st.success(answer)
 
 
