@@ -1,5 +1,6 @@
 """Backend support module for Streamlit RCA PoC."""
 import logging
+import re
 from typing import Dict, Optional, Any
 import pandas as pd
 from config.snowflake_config import DEFAULT_CONFIG
@@ -244,6 +245,95 @@ def get_dyd_status(session: Any) -> Dict[str, int]:
 # ---------------------------------------------------------------------------
 
 CORTEX_DEFAULT_MODEL = "mistral-large2"
+
+# Whitelisted tables for safe Cortex table-grounded Q&A.
+ALLOWED_CORTEX_TABLES = {
+    "DIM_PARTY": "CURATED.DIM_PARTY",
+    "DIM_ACCOUNT": "CURATED.DIM_ACCOUNT",
+    "DIM_INSTRUMENT": "CURATED.DIM_INSTRUMENT",
+    "FCT_TRADE": "CURATED.FCT_TRADE",
+    "DQ_EXECUTION_RESULTS": "CONTROLS.DQ_EXECUTION_RESULTS",
+    "RECONCILIATION_RESULTS": "CONTROLS.RECONCILIATION_RESULTS",
+    "DYD_MAPPINGS": "CONTROLS.DYD_MAPPINGS",
+    "DYD_METADATA": "CONTROLS.DYD_METADATA",
+}
+
+
+def _detect_allowed_table(question: str) -> Optional[str]:
+    """Detect a whitelisted table name from a natural language question."""
+    q = question.upper()
+    if not q.strip():
+        return None
+
+    # Direct fully qualified references.
+    for table_name in ALLOWED_CORTEX_TABLES.values():
+        if table_name in q:
+            return table_name
+
+    # Alias/simple name references.
+    for alias, table_name in ALLOWED_CORTEX_TABLES.items():
+        if re.search(rf"\b{re.escape(alias)}\b", q):
+            return table_name
+
+    return None
+
+
+def get_table_preview_for_question(session: Any, question: str, limit: int = 20) -> Dict[str, Any]:
+    """Return a safe table preview for table-aware Cortex questions."""
+    response = {
+        "table": None,
+        "data": pd.DataFrame(),
+        "error": "",
+    }
+    if session is None:
+        response["error"] = "No active Snowflake session."
+        return response
+
+    table_name = _detect_allowed_table(question)
+    if table_name is None:
+        return response
+
+    try:
+        schema, table = table_name.split(".", 1)
+        if not _table_exists(session, schema, table):
+            response["table"] = table_name
+            response["error"] = f"Table {table_name} was not found in the current database."
+            return response
+
+        safe_limit = min(max(int(limit), 1), 100)
+        df = _execute_sql(session, f"SELECT * FROM {table_name} LIMIT {safe_limit}")
+        response["table"] = table_name
+        response["data"] = df
+        return response
+    except Exception as exc:
+        logger.error(f"Table preview fetch failed: {exc}")
+        response["table"] = table_name
+        response["error"] = f"Unable to fetch table preview for {table_name}: {exc}"
+        return response
+
+
+def build_table_grounded_prompt(question: str, table_name: str, df: pd.DataFrame) -> str:
+    """Build a Cortex prompt grounded on fetched table rows."""
+    if df.empty:
+        return (
+            "You are a financial data analyst. The user asked a table-specific question, "
+            f"but no rows were returned for {table_name}. Explain what this means and provide "
+            "one safe SQL query to validate the table content.\n\n"
+            f"User question: {question}\n"
+        )
+
+    preview_rows = df.head(10).to_dict(orient="records")
+    prompt = (
+        "You are a financial data governance analyst. Answer using only the table preview below. "
+        "If the preview is insufficient, explicitly say what additional data is needed.\n\n"
+        f"Table: {table_name}\n"
+        f"Columns: {', '.join(df.columns.tolist())}\n"
+        f"Row count in preview: {len(df)}\n"
+        f"Preview rows: {preview_rows}\n\n"
+        f"User question: {question}\n\n"
+        "Provide a concise response with: findings, caveats, and next SQL check."
+    )
+    return prompt
 
 
 def get_cortex_insight(session: Any, prompt: str, model: str = CORTEX_DEFAULT_MODEL) -> str:

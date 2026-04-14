@@ -27,6 +27,8 @@ from src.streamlit_backend import (
     build_dq_summary_prompt,
     CORTEX_DEFAULT_MODEL,
     get_last_connection_error,
+    get_table_preview_for_question,
+    build_table_grounded_prompt,
 )
 
 # Configure Streamlit
@@ -428,11 +430,26 @@ def render_cortex_ai():
                     st.caption(f"Connection error details: {last_error}")
                 return
 
-            context_prompt = (
-                "You are a financial data governance expert for an asset management firm. "
-                "Answer the following question concisely and professionally:\n\n"
-                + user_question.strip()
-            )
+            table_preview = get_table_preview_for_question(active_session, user_question, limit=20)
+            if table_preview.get("error"):
+                st.warning(table_preview["error"])
+
+            if table_preview.get("table") and not table_preview.get("data").empty:
+                st.caption(f"Using live table preview from {table_preview['table']} (up to 20 rows).")
+                st.dataframe(table_preview["data"], use_container_width=True, hide_index=True)
+                context_prompt = build_table_grounded_prompt(
+                    user_question.strip(),
+                    table_preview["table"],
+                    table_preview["data"],
+                )
+            else:
+                context_prompt = (
+                    "You are a financial data governance expert for an asset management firm. "
+                    "Answer the following question concisely and professionally. "
+                    "If the user asks for exact data retrieval, provide a safe SQL query.\n\n"
+                    + user_question.strip()
+                )
+
             with st.spinner("Thinking..."):
                 answer = get_cortex_insight(active_session, context_prompt, model=selected_model)
             st.success(answer)
